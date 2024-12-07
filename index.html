@@ -219,59 +219,6 @@
             renderQuestion();
         }
 
-        function showResultScreen(score, time) {
-            clearInterval(timerInterval);
-            const index = saveHighscores(mode, score, time);
-            const highscores = getHighscores();
-
-            gameScreen.classList.remove("visible");
-            resultScreen.classList.add("visible");
-            resultScoreDisplay.innerHTML = `Richtig: ${score}`;
-            resultTimeDisplay.innerHTML = `Zeit: ${time.toFixed(2)} Sekunden`;
-            highscoresCurrentDisplay.innerHTML = highscores[mode]
-                .map(
-                    (entry, idx) =>
-                        `<div class="highscore-entry ${
-                            idx === index ? "new-highscore" : ""
-                        }">${idx + 1}. ${entry.score} Punkte, ${entry.time.toFixed(2)} Sekunden (${
-                            new Date(entry.date).toLocaleString("de-DE")
-                        })</div>`
-                )
-                .join("");
-        }
-
-        function showHighscoresScreen() {
-            startScreen.classList.remove("visible");
-            highscoresScreen.classList.add("visible");
-            highscoresDisplay.innerHTML = Object.keys(getHighscores())
-                .map((mode) => {
-                    const modeTitle = mode === "word" ? "Wortmodus" : mode === "number" ? "Zahlenmodus" : "Gemischter Modus";
-                    return `<h3>${modeTitle}</h3>${renderHighscores(mode)}`;
-                })
-                .join("");
-        }
-
-        viewHighscoresButton.addEventListener("click", showHighscoresScreen);
-        clearHighscoresButton.addEventListener("click", () => {
-            clearHighscores();
-            highscoresDisplay.innerHTML = "<p>Highscores gelöscht.</p>";
-        });
-        backToMenuButton.addEventListener("click", () => {
-            highscoresScreen.classList.remove("visible");
-            startScreen.classList.add("visible");
-        });
-        restartButton.addEventListener("click", () => {
-            resultScreen.classList.remove("visible");
-            startScreen.classList.add("visible");
-        });
-
-        wordModeButton.addEventListener("click", () => showGameScreen("word"));
-        numberModeButton.addEventListener("click", () => showGameScreen("number"));
-        mixedModeButton.addEventListener("click", () => showGameScreen("mixed"));
-        quickStartButton.addEventListener("click", () =>
-            showGameScreen(Math.random() > 0.5 ? "word" : "number")
-        );
-
         function renderQuestion() {
             if (currentQuestion >= 20) {
                 const elapsedTime = (Date.now() - startTime) / 1000;
@@ -283,15 +230,18 @@
             questionNumberDisplay.textContent = `Frage: ${currentQuestion}/20`;
 
             const { hours, minutes } = getRandomTime();
+            const questionMode = mode === "mixed" ? (Math.random() > 0.5 ? "word" : "number") : mode;
+
             const correctAnswer =
-                mode === "word"
+                questionMode === "word"
                     ? getTimeLabel(hours, minutes)
                     : `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+
             const wrongAnswers = generateWrongAnswers(correctAnswer, hours, minutes);
             const answers = [correctAnswer, ...wrongAnswers].sort(() => Math.random() - 0.5);
 
             timeDisplay.textContent =
-                mode === "word"
+                questionMode === "word"
                     ? `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
                     : getTimeLabel(hours, minutes);
 
@@ -380,6 +330,59 @@
             }
             return [...wrongAnswers];
         }
+
+        function showResultScreen(score, time) {
+            clearInterval(timerInterval);
+            const index = saveHighscores(mode, score, time);
+            const highscores = getHighscores();
+
+            gameScreen.classList.remove("visible");
+            resultScreen.classList.add("visible");
+            resultScoreDisplay.innerHTML = `Richtig: ${score}`;
+            resultTimeDisplay.innerHTML = `Zeit: ${time.toFixed(2)} Sekunden`;
+            highscoresCurrentDisplay.innerHTML = highscores[mode]
+                .map(
+                    (entry, idx) =>
+                        `<div class="highscore-entry ${
+                            idx === index ? "new-highscore" : ""
+                        }">${idx + 1}. ${entry.score} Punkte, ${entry.time.toFixed(2)} Sekunden (${
+                            new Date(entry.date).toLocaleString("de-DE")
+                        })</div>`
+                )
+                .join("");
+        }
+
+        function showHighscoresScreen() {
+            startScreen.classList.remove("visible");
+            highscoresScreen.classList.add("visible");
+            highscoresDisplay.innerHTML = Object.keys(getHighscores())
+                .map((mode) => {
+                    const modeTitle = mode === "word" ? "Wortmodus" : mode === "number" ? "Zahlenmodus" : "Gemischter Modus";
+                    return `<h3>${modeTitle}</h3>${renderHighscores(mode)}`;
+                })
+                .join("");
+        }
+
+        viewHighscoresButton.addEventListener("click", showHighscoresScreen);
+        clearHighscoresButton.addEventListener("click", () => {
+            clearHighscores();
+            highscoresDisplay.innerHTML = "<p>Highscores gelöscht.</p>";
+        });
+        backToMenuButton.addEventListener("click", () => {
+            highscoresScreen.classList.remove("visible");
+            startScreen.classList.add("visible");
+        });
+        restartButton.addEventListener("click", () => {
+            resultScreen.classList.remove("visible");
+            startScreen.classList.add("visible");
+        });
+
+        wordModeButton.addEventListener("click", () => showGameScreen("word"));
+        numberModeButton.addEventListener("click", () => showGameScreen("number"));
+        mixedModeButton.addEventListener("click", () => showGameScreen("mixed"));
+        quickStartButton.addEventListener("click", () =>
+            showGameScreen(Math.random() > 0.5 ? "word" : "number")
+        );
     </script>
 </body>
 </html>
