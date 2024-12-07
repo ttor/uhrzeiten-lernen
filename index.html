@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uhrzeit-Spiel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+            overflow: hidden;
+        }
+        .container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+        .visible {
+            display: flex;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            width: 90%;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        .time-display {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+        }
+        .buttons-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 90%;
+        }
+        button {
+            padding: 15px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+        }
+        #quick-start {
+            background-color: #FFD700;
+            font-weight: bold;
+            border: 2px solid #FFA500;
+        }
+        #quick-start:hover {
+            background-color: #FFC107;
+        }
+        #view-highscores {
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+        .correct {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .incorrect {
+            background-color: #F44336;
+            color: white;
+        }
+        .flash {
+            animation: flash 0.2s;
+        }
+        @keyframes flash {
+            0% { background-color: transparent; }
+            50% { background-color: rgba(0, 255, 0, 0.2); }
+            100% { background-color: transparent; }
+        }
+        .flash-incorrect {
+            animation: flash-incorrect 0.2s;
+        }
+        @keyframes flash-incorrect {
+            0% { background-color: transparent; }
+            50% { background-color: rgba(255, 0, 0, 0.2); }
+            100% { background-color: transparent; }
+        }
+        #highscores .highscore-entry {
+            text-align: left;
+            margin: 5px 0;
+        }
+        .new-highscore {
+            background-color: #FFD700;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container visible" id="start-screen">
+        <h1>Uhrzeit-Spiel</h1>
+        <button id="word-mode">Wortmodus</button>
+        <button id="number-mode">Zahlenmodus</button>
+        <button id="mixed-mode">Gemischter Modus</button>
+        <button id="quick-start">Schnell starten</button>
+        <button id="view-highscores">Highscores</button>
+    </div>
+    <div class="container" id="game-screen">
+        <div class="stats">
+            <div id="question-number">Frage: 0/20</div>
+            <div id="timer">Zeit: 0.00s</div>
+            <div id="score">Richtig: 0/20</div>
+        </div>
+        <div class="time-display" id="time-display"></div>
+        <div class="buttons-container" id="buttons-container"></div>
+    </div>
+    <div class="container" id="result-screen">
+        <h1>Ergebnis</h1>
+        <p id="result-time"></p>
+        <p id="result-score"></p>
+        <div id="highscores-current"></div>
+        <button id="restart-button">Neu starten</button>
+    </div>
+    <div class="container" id="highscores-screen">
+        <h1>Highscores</h1>
+        <div id="highscores"></div>
+        <button id="clear-highscores">Highscores löschen</button>
+        <button id="back-to-menu">Zurück</button>
+    </div>
+
+    <script>
+        const startScreen = document.getElementById("start-screen");
+        const gameScreen = document.getElementById("game-screen");
+        const resultScreen = document.getElementById("result-screen");
+        const highscoresScreen = document.getElementById("highscores-screen");
+
+        const viewHighscoresButton = document.getElementById("view-highscores");
+        const clearHighscoresButton = document.getElementById("clear-highscores");
+        const backToMenuButton = document.getElementById("back-to-menu");
+
+        const wordModeButton = document.getElementById("word-mode");
+        const numberModeButton = document.getElementById("number-mode");
+        const mixedModeButton = document.getElementById("mixed-mode");
+        const quickStartButton = document.getElementById("quick-start");
+        const restartButton = document.getElementById("restart-button");
+
+        const timeDisplay = document.getElementById("time-display");
+        const buttonsContainer = document.getElementById("buttons-container");
+
+        const highscoresDisplay = document.getElementById("highscores");
+        const highscoresCurrentDisplay = document.getElementById("highscores-current");
+
+        const timerDisplay = document.getElementById("timer");
+        const questionNumberDisplay = document.getElementById("question-number");
+        const scoreDisplay = document.getElementById("score");
+
+        const resultTimeDisplay = document.getElementById("result-time");
+        const resultScoreDisplay = document.getElementById("result-score");
+
+        const numberWords = ["zwölf", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf"];
+
+        let mode = "number";
+        let currentQuestion = 0;
+        let correctAnswers = 0;
+        let startTime = 0;
+        let timerInterval;
+
+        function getHighscores() {
+            return JSON.parse(localStorage.getItem("highscores")) || { word: [], number: [], mixed: [] };
+        }
+
+        function saveHighscores(mode, score, time) {
+            const highscores = getHighscores();
+            const newEntry = { score, time: parseFloat(time.toFixed(2)), date: new Date().toISOString() };
+            highscores[mode].push(newEntry);
+
+            highscores[mode] = highscores[mode]
+                .sort((a, b) => b.score - a.score || a.time - b.time)
+                .slice(0, 5);
+
+            localStorage.setItem("highscores", JSON.stringify(highscores));
+            return highscores[mode].indexOf(newEntry);
+        }
+
+        function clearHighscores() {
+            localStorage.removeItem("highscores");
+        }
+
+        function renderHighscores(mode) {
+            const highscores = getHighscores();
+            const list = highscores[mode];
+            return list
+                .map(
+                    (entry, index) =>
+                        `<div class="highscore-entry">${index + 1}. ${entry.score} Punkte, ${entry.time.toFixed(
+                            2
+                        )} Sekunden (${new Date(entry.date).toLocaleString("de-DE")})</div>`
+                )
+                .join("");
+        }
+
+        function showGameScreen(selectedMode) {
+            startScreen.classList.remove("visible");
+            gameScreen.classList.add("visible");
+            mode = selectedMode;
+            currentQuestion = 0;
+            correctAnswers = 0;
+            startTime = Date.now();
+            scoreDisplay.textContent = "Richtig: 0/20";
+            questionNumberDisplay.textContent = "Frage: 0/20";
+            timerInterval = setInterval(() => {
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                timerDisplay.textContent = `Zeit: ${elapsedTime.toFixed(2)}s`;
+            }, 100);
+            renderQuestion();
+        }
+
+        function showResultScreen(score, time) {
+            clearInterval(timerInterval);
+            const index = saveHighscores(mode, score, time);
+            const highscores = getHighscores();
+
+            gameScreen.classList.remove("visible");
+            resultScreen.classList.add("visible");
+            resultScoreDisplay.innerHTML = `Richtig: ${score}`;
+            resultTimeDisplay.innerHTML = `Zeit: ${time.toFixed(2)} Sekunden`;
+            highscoresCurrentDisplay.innerHTML = highscores[mode]
+                .map(
+                    (entry, idx) =>
+                        `<div class="highscore-entry ${
+                            idx === index ? "new-highscore" : ""
+                        }">${idx + 1}. ${entry.score} Punkte, ${entry.time.toFixed(2)} Sekunden (${
+                            new Date(entry.date).toLocaleString("de-DE")
+                        })</div>`
+                )
+                .join("");
+        }
+
+        function showHighscoresScreen() {
+            startScreen.classList.remove("visible");
+            highscoresScreen.classList.add("visible");
+            highscoresDisplay.innerHTML = Object.keys(getHighscores())
+                .map((mode) => {
+                    const modeTitle = mode === "word" ? "Wortmodus" : mode === "number" ? "Zahlenmodus" : "Gemischter Modus";
+                    return `<h3>${modeTitle}</h3>${renderHighscores(mode)}`;
+                })
+                .join("");
+        }
+
+        viewHighscoresButton.addEventListener("click", showHighscoresScreen);
+        clearHighscoresButton.addEventListener("click", () => {
+            clearHighscores();
+            highscoresDisplay.innerHTML = "<p>Highscores gelöscht.</p>";
+        });
+        backToMenuButton.addEventListener("click", () => {
+            highscoresScreen.classList.remove("visible");
+            startScreen.classList.add("visible");
+        });
+        restartButton.addEventListener("click", () => {
+            resultScreen.classList.remove("visible");
+            startScreen.classList.add("visible");
+        });
+
+        wordModeButton.addEventListener("click", () => showGameScreen("word"));
+        numberModeButton.addEventListener("click", () => showGameScreen("number"));
+        mixedModeButton.addEventListener("click", () => showGameScreen("mixed"));
+        quickStartButton.addEventListener("click", () =>
+            showGameScreen(Math.random() > 0.5 ? "word" : "number")
+        );
+
+        function renderQuestion() {
+            if (currentQuestion >= 20) {
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                showResultScreen(correctAnswers, elapsedTime);
+                return;
+            }
+
+            currentQuestion++;
+            questionNumberDisplay.textContent = `Frage: ${currentQuestion}/20`;
+
+            const { hours, minutes } = getRandomTime();
+            const correctAnswer =
+                mode === "word"
+                    ? getTimeLabel(hours, minutes)
+                    : `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+            const wrongAnswers = generateWrongAnswers(correctAnswer, hours, minutes);
+            const answers = [correctAnswer, ...wrongAnswers].sort(() => Math.random() - 0.5);
+
+            timeDisplay.textContent =
+                mode === "word"
+                    ? `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
+                    : getTimeLabel(hours, minutes);
+
+            buttonsContainer.innerHTML = "";
+            answers.forEach((answer) => {
+                const button = document.createElement("button");
+                button.textContent = answer;
+                button.addEventListener("click", () => {
+                    if (answer === correctAnswer) {
+                        correctAnswers++;
+                        document.body.classList.add("flash");
+                    } else {
+                        document.body.classList.add("flash-incorrect");
+                    }
+                    scoreDisplay.textContent = `Richtig: ${correctAnswers}/20`;
+                    setTimeout(() => {
+                        document.body.classList.remove("flash");
+                        document.body.classList.remove("flash-incorrect");
+                        renderQuestion();
+                    }, 100);
+                });
+                buttonsContainer.appendChild(button);
+            });
+        }
+
+        function getRandomTime() {
+            const hours = Math.floor(Math.random() * 24);
+            const minutes = Math.floor(Math.random() * 12) * 5;
+            return { hours, minutes };
+        }
+
+        function getTimeLabel(hours, minutes) {
+            const nextHour = (hours + 1 + 24) % 24;
+            const currentHour = (hours + 24) % 12 || 12;
+            const nextHourWord = getWordForNumber(nextHour);
+            const currentHourWord = getWordForNumber(currentHour);
+
+            switch (minutes) {
+                case 0:
+                    return `${currentHourWord} Uhr`;
+                case 5:
+                    return `fünf nach ${currentHourWord}`;
+                case 10:
+                    return `zehn nach ${currentHourWord}`;
+                case 15:
+                    return `viertel nach ${currentHourWord}`;
+                case 20:
+                    return `zwanzig nach ${currentHourWord}`;
+                case 25:
+                    return `fünf vor halb ${nextHourWord}`;
+                case 30:
+                    return `halb ${nextHourWord}`;
+                case 35:
+                    return `fünf nach halb ${nextHourWord}`;
+                case 40:
+                    return `zwanzig vor ${nextHourWord}`;
+                case 45:
+                    return `viertel vor ${nextHourWord}`;
+                case 50:
+                    return `zehn vor ${nextHourWord}`;
+                case 55:
+                    return `fünf vor ${nextHourWord}`;
+                default:
+                    return "undefiniert"; // Fallback
+            }
+        }
+
+        function getWordForNumber(num) {
+            return numberWords[num % 12];
+        }
+
+        function generateWrongAnswers(correctAnswer, hours, minutes) {
+            const wrongAnswers = new Set();
+            while (wrongAnswers.size < 2) {
+                const randomHours = (hours + Math.floor(Math.random() * 3) - 1 + 24) % 24;
+                const randomMinutes = Math.floor(Math.random() * 12) * 5;
+
+                const wrongAnswer =
+                    mode === "word"
+                        ? getTimeLabel(randomHours, randomMinutes)
+                        : `${randomHours.toString().padStart(2, "0")}:${randomMinutes.toString().padStart(2, "0")}`;
+
+                if (wrongAnswer !== correctAnswer && wrongAnswer) {
+                    wrongAnswers.add(wrongAnswer);
+                }
+            }
+            return [...wrongAnswers];
+        }
+    </script>
+</body>
+</html>
