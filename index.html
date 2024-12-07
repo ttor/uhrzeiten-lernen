@@ -11,7 +11,7 @@
             padding: 0;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
             height: 100vh;
             background-color: #f4f4f4;
@@ -28,16 +28,28 @@
         .visible {
             display: flex;
         }
+        header {
+            width: 100%;
+            position: fixed;
+            top: 0;
+            background-color: #f4f4f4;
+            padding: 10px 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            z-index: 10;
+        }
         .stats {
             display: flex;
             justify-content: space-between;
             width: 90%;
-            margin-bottom: 10px;
+            margin: 0 auto;
             font-size: 1rem;
         }
         .time-display {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             margin-bottom: 20px;
+            margin-top: 70px; /* Abstand von der fixierten Header-Leiste */
+            text-align: center;
         }
         .buttons-container {
             display: flex;
@@ -110,11 +122,13 @@
         <button id="view-highscores">Highscores</button>
     </div>
     <div class="container" id="game-screen">
-        <div class="stats">
-            <div id="question-number">Frage: 0/20</div>
-            <div id="timer">Zeit: 0.00s</div>
-            <div id="score">Richtig: 0/20</div>
-        </div>
+        <header>
+            <div class="stats">
+                <div id="question-number">Frage: 0/20</div>
+                <div id="timer">Zeit: 0.00s</div>
+                <div id="score">Richtig: 0/20</div>
+            </div>
+        </header>
         <div class="time-display" id="time-display"></div>
         <div class="buttons-container" id="buttons-container"></div>
     </div>
@@ -131,7 +145,6 @@
         <button id="clear-highscores">Highscores löschen</button>
         <button id="back-to-menu">Zurück</button>
     </div>
-
     <script>
         const startScreen = document.getElementById("start-screen");
         const gameScreen = document.getElementById("game-screen");
@@ -219,118 +232,6 @@
             renderQuestion();
         }
 
-        function renderQuestion() {
-            if (currentQuestion >= 20) {
-                const elapsedTime = (Date.now() - startTime) / 1000;
-                showResultScreen(correctAnswers, elapsedTime);
-                return;
-            }
-
-            currentQuestion++;
-            questionNumberDisplay.textContent = `Frage: ${currentQuestion}/20`;
-
-            const { hours, minutes } = getRandomTime();
-            const questionMode = mode === "mixed" ? (Math.random() > 0.5 ? "word" : "number") : mode;
-
-            const correctAnswer =
-                questionMode === "word"
-                    ? getTimeLabel(hours, minutes)
-                    : `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-
-            const wrongAnswers = generateWrongAnswers(correctAnswer, hours, minutes);
-            const answers = [correctAnswer, ...wrongAnswers].sort(() => Math.random() - 0.5);
-
-            timeDisplay.textContent =
-                questionMode === "word"
-                    ? `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
-                    : getTimeLabel(hours, minutes);
-
-            buttonsContainer.innerHTML = "";
-            answers.forEach((answer) => {
-                const button = document.createElement("button");
-                button.textContent = answer;
-                button.addEventListener("click", () => {
-                    if (answer === correctAnswer) {
-                        correctAnswers++;
-                        document.body.classList.add("flash");
-                    } else {
-                        document.body.classList.add("flash-incorrect");
-                    }
-                    scoreDisplay.textContent = `Richtig: ${correctAnswers}/20`;
-                    setTimeout(() => {
-                        document.body.classList.remove("flash");
-                        document.body.classList.remove("flash-incorrect");
-                        renderQuestion();
-                    }, 100);
-                });
-                buttonsContainer.appendChild(button);
-            });
-        }
-
-        function getRandomTime() {
-            const hours = Math.floor(Math.random() * 24);
-            const minutes = Math.floor(Math.random() * 12) * 5;
-            return { hours, minutes };
-        }
-
-        function getTimeLabel(hours, minutes) {
-            const nextHour = (hours + 1 + 24) % 24;
-            const currentHour = (hours + 24) % 12 || 12;
-            const nextHourWord = getWordForNumber(nextHour);
-            const currentHourWord = getWordForNumber(currentHour);
-
-            switch (minutes) {
-                case 0:
-                    return `${currentHourWord} Uhr`;
-                case 5:
-                    return `fünf nach ${currentHourWord}`;
-                case 10:
-                    return `zehn nach ${currentHourWord}`;
-                case 15:
-                    return `viertel nach ${currentHourWord}`;
-                case 20:
-                    return `zwanzig nach ${currentHourWord}`;
-                case 25:
-                    return `fünf vor halb ${nextHourWord}`;
-                case 30:
-                    return `halb ${nextHourWord}`;
-                case 35:
-                    return `fünf nach halb ${nextHourWord}`;
-                case 40:
-                    return `zwanzig vor ${nextHourWord}`;
-                case 45:
-                    return `viertel vor ${nextHourWord}`;
-                case 50:
-                    return `zehn vor ${nextHourWord}`;
-                case 55:
-                    return `fünf vor ${nextHourWord}`;
-                default:
-                    return "undefiniert"; // Fallback
-            }
-        }
-
-        function getWordForNumber(num) {
-            return numberWords[num % 12];
-        }
-
-        function generateWrongAnswers(correctAnswer, hours, minutes) {
-            const wrongAnswers = new Set();
-            while (wrongAnswers.size < 2) {
-                const randomHours = (hours + Math.floor(Math.random() * 3) - 1 + 24) % 24;
-                const randomMinutes = Math.floor(Math.random() * 12) * 5;
-
-                const wrongAnswer =
-                    mode === "word"
-                        ? getTimeLabel(randomHours, randomMinutes)
-                        : `${randomHours.toString().padStart(2, "0")}:${randomMinutes.toString().padStart(2, "0")}`;
-
-                if (wrongAnswer !== correctAnswer && wrongAnswer) {
-                    wrongAnswers.add(wrongAnswer);
-                }
-            }
-            return [...wrongAnswers];
-        }
-
         function showResultScreen(score, time) {
             clearInterval(timerInterval);
             const index = saveHighscores(mode, score, time);
@@ -383,6 +284,126 @@
         quickStartButton.addEventListener("click", () =>
             showGameScreen(Math.random() > 0.5 ? "word" : "number")
         );
+
+        function renderQuestion() {
+            if (currentQuestion >= 20) {
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                showResultScreen(correctAnswers, elapsedTime);
+                return;
+            }
+
+            currentQuestion++;
+            questionNumberDisplay.textContent = `Frage: ${currentQuestion}/20`;
+
+            // Gemischter Modus: Fragetyp zufällig wählen
+            const questionMode = mode === "mixed" ? (Math.random() > 0.5 ? "word" : "number") : mode;
+
+            const { hours, minutes } = getRandomTime();
+            const correctAnswer =
+                questionMode === "word"
+                    ? getTimeLabel(hours, minutes)
+                    : `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+            const wrongAnswers = generateWrongAnswers(correctAnswer, hours, minutes, questionMode); // Übergabe des Fragetypen
+            const answers = [correctAnswer, ...wrongAnswers].sort(() => Math.random() - 0.5);
+
+            // Anzeige der Frage basierend auf dem aktuellen Modus
+            timeDisplay.textContent =
+                questionMode === "word"
+                    ? `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
+                    : getTimeLabel(hours, minutes);
+
+            buttonsContainer.innerHTML = "";
+            answers.forEach((answer) => {
+                const button = document.createElement("button");
+                button.textContent = answer;
+                button.addEventListener("click", () => {
+                    if (answer === correctAnswer) {
+                        correctAnswers++;
+                        document.body.classList.add("flash");
+                    } else {
+                        document.body.classList.add("flash-incorrect");
+                    }
+                    scoreDisplay.textContent = `Richtig: ${correctAnswers}/20`;
+                    setTimeout(() => {
+                        document.body.classList.remove("flash");
+                        document.body.classList.remove("flash-incorrect");
+                        renderQuestion();
+                    }, 100);
+                });
+                buttonsContainer.appendChild(button);
+            });
+        }
+
+
+
+        function getRandomTime() {
+            const hours = Math.floor(Math.random() * 24);
+            const minutes = Math.floor(Math.random() * 12) * 5;
+            return { hours, minutes };
+        }
+
+        function getTimeLabel(hours, minutes) {
+            const nextHour = (hours + 1 + 24) % 24;
+            const currentHour = (hours + 24) % 12 || 12;
+            const nextHourWord = getWordForNumber(nextHour);
+            const currentHourWord = getWordForNumber(currentHour);
+
+            switch (minutes) {
+                case 0:
+                    return `${currentHourWord} Uhr`;
+                case 5:
+                    return `fünf nach ${currentHourWord}`;
+                case 10:
+                    return `zehn nach ${currentHourWord}`;
+                case 15:
+                    return `viertel nach ${currentHourWord}`;
+                case 20:
+                    return `zwanzig nach ${currentHourWord}`;
+                case 25:
+                    return `fünf vor halb ${nextHourWord}`;
+                case 30:
+                    return `halb ${nextHourWord}`;
+                case 35:
+                    return `fünf nach halb ${nextHourWord}`;
+                case 40:
+                    return `zwanzig vor ${nextHourWord}`;
+                case 45:
+                    return `viertel vor ${nextHourWord}`;
+                case 50:
+                    return `zehn vor ${nextHourWord}`;
+                case 55:
+                    return `fünf vor ${nextHourWord}`;
+                default:
+                    return "undefiniert"; // Fallback
+            }
+        }
+
+        function getWordForNumber(num) {
+            return numberWords[num % 12];
+        }
+
+        function generateWrongAnswers(correctAnswer, hours, minutes, questionMode) {
+            const wrongAnswers = new Set();
+            while (wrongAnswers.size < 2) {
+                const randomHours = (hours + Math.floor(Math.random() * 3) - 1 + 24) % 24;
+                const randomMinutes = Math.floor(Math.random() * 12) * 5;
+
+                const wrongAnswer =
+                    questionMode === "word"
+                        ? getTimeLabel(randomHours, randomMinutes) // Wortantworten für Word-Modus
+                        : `${randomHours.toString().padStart(2, "0")}:${randomMinutes.toString().padStart(2, "0")}`; // Zahlenantworten für Number-Modus
+
+                if (wrongAnswer !== correctAnswer && wrongAnswer) {
+                    wrongAnswers.add(wrongAnswer);
+                }
+            }
+            return [...wrongAnswers];
+        }
+
     </script>
+
 </body>
 </html>
+
+
+
